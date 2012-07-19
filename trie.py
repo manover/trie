@@ -4,20 +4,11 @@ import re
 import string
 import array
 
-CHARSET = "abcdefghijklmnopqrstuvwxyz1234567890_.-"
-TLEN = len(CHARSET)
-
-re_key = re.compile(r"^[%s]+$" % CHARSET)
-tr_table = string.maketrans(CHARSET, array.array("b", xrange(TLEN)).tostring())
-
-def translate(s):
-    return array.array("b", string.translate(s, tr_table))
-
 class Node(object):
     __slots__ = ["table", "value"]
 
     def __init__(self, key, val):
-        self.table = [None] * TLEN
+        self.table = {}
         self.insert(key, val)
 
     def __repr__(self):
@@ -27,10 +18,9 @@ class Node(object):
     def __iter__(self):
         if self.has_value:
             yield self
-        for n in self.table:
-            if n:
-                for i in n.__iter__():
-                    yield i
+        for n in self.table.itervalues():
+            for i in n.__iter__():
+                yield i
 
     @property
     def has_value(self):
@@ -41,7 +31,7 @@ class Node(object):
             # Parent node
             sub = key[0]
             suffix = key[1:]
-            if self.table[sub]:
+            if sub in self.table:
                 # Child node exists
                 self.table[sub].insert(suffix, val)
             else:
@@ -58,17 +48,6 @@ class Trie(object):
     def __init__(self):
         self.root = Node(None, None)
 
-    def calc_key(self, key):
-        if key:
-            key = str(key)
-            if not re_key.match(key):
-                raise ValueError("Invalid key: %s" % key)
-            else:
-                return translate(key)
-        else:
-            # Special case (empty key)
-            return array.array("b", "")
-
     def __getitem__(self, key):
         suffix, node = self.get_node(key)
         if suffix:
@@ -84,10 +63,9 @@ class Trie(object):
             Returns (zero key, node) containing key if present,
             (key leftover (suffix), last known node) otherwise
         """
-        key = self.calc_key(key)
         node = self.root
         while key:
-            if node.table[key[0]]:
+            if key[0] in node.table:
                 node = node.table[key[0]]
             else:
                 return key, node
@@ -113,10 +91,10 @@ class Trie(object):
             return []
 
         if key:
-            k = self.calc_key(key[-1])[0]
+            k = key[-1]
             node = parent.table[k]
             if node:
-                parent.table[k] = None
+                del parent.table[k]
         else:
             # Special case (empty key) - delete the whole tree
             node = self.root
@@ -130,7 +108,6 @@ class Trie(object):
         return vals
 
     def __setitem__(self, key, val):
-        key = self.calc_key(key)
         self.root.insert(key, val)
 
     def setdefault(self, key, default=None):
