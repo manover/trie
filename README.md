@@ -1,0 +1,4 @@
+trie
+====
+
+Ternary tree
