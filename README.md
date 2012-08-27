@@ -1,4 +1,4 @@
 trie
 ====
 
-Ternary tree
+Prefix search tree
